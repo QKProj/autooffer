@@ -4,7 +4,7 @@ import { generateOffers } from "@/lib/calculator";
 import { saveAnalysis } from "@/lib/supabase";
 import { DEFAULT_ESTIMATES, EstimateDefaults, AnalysisResult } from "@/lib/types";
 
-export const maxDuration = 30; // Allow up to 30s for API calls
+export const maxDuration = 60; // Allow up to 60s for API calls
 
 export async function POST(request: NextRequest) {
   try {
