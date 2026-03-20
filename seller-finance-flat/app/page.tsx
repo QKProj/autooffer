@@ -17,6 +17,9 @@ import {
   deleteHistoryEntry,
   fetchAnalysisById,
 } from "@/lib/api-client";
+import { onAuthStateChange, getUser, signOut } from "@/lib/auth";
+import LandingPage from "./landing";
+import type { User } from "@supabase/supabase-js";
 
 // ═══════════════════════════════════════════
 // FORMATTING
@@ -538,15 +541,15 @@ function HistoryPage({ onBack, onViewDetails }: { onBack: () => void; onViewDeta
 }
 
 // ═══════════════════════════════════════════
-// MAIN APP
+// AUTHENTICATED APP (inner)
 // ═══════════════════════════════════════════
 
-export default function Page() {
+function AuthenticatedApp({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const [page, setPage] = useState<"home" | "results" | "builder" | "history">("home");
   const [profileOpen, setProfileOpen] = useState(false);
   const [emailOffer, setEmailOffer] = useState<Offer | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [profile, setProfile] = useState<UserProfile>({ name: "", brokerage: "", phone: "", email: "", license: "", defaults: DEFAULT_ESTIMATES });
+  const [profile, setProfile] = useState<UserProfile>({ name: "", brokerage: "", phone: "", email: user.email || "", license: "", defaults: DEFAULT_ESTIMATES });
 
   useEffect(() => { fetchProfile().then(p => { if (p) setProfile(p); }); }, []);
 
@@ -573,6 +576,63 @@ export default function Page() {
       {page === "history" && <HistoryPage onBack={() => setPage("home")} onViewDetails={handleViewHistory} />}
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={profile} onSave={handleSaveProfile} />
       <EmailModal open={!!emailOffer} onClose={() => setEmailOffer(null)} offer={emailOffer} property={emailProperty} profile={profile} />
+      {/* Sign out button — fixed bottom-left */}
+      <button
+        onClick={onSignOut}
+        className="fixed bottom-5 left-5 z-50 btn-secondary flex items-center gap-1.5 !py-2 !px-3.5 !text-[11px] bg-white shadow-card"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+        Sign Out
+      </button>
     </>
+  );
+}
+
+// ═══════════════════════════════════════════
+// MAIN APP (auth gate)
+// ═══════════════════════════════════════════
+
+export default function Page() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check for existing session on mount
+    getUser().then((u) => {
+      setUser(u);
+      setLoading(false);
+    });
+
+    // Listen for auth state changes (magic link, sign in/out)
+    const { data: { subscription } } = onAuthStateChange((u) => {
+      setUser(u);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#FAFAF8" }}>
+        <div className="text-center animate-in">
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-brand-navy mb-4">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+          </div>
+          <div className="inline-block w-5 h-5 border-2 border-brand-border border-t-brand-navy rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingPage onAuthenticated={() => getUser().then(setUser)} />;
+  }
+
+  return (
+    <AuthenticatedApp
+      user={user}
+      onSignOut={async () => { await signOut(); setUser(null); }}
+    />
   );
 }
