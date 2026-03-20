@@ -1,24 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProfile, upsertProfile } from "@/lib/supabase";
+import { getUserId } from "@/lib/auth-server";
 
 export async function GET(request: NextRequest) {
-  const deviceId = request.headers.get("x-device-id");
-  if (!deviceId) {
-    return NextResponse.json({ error: "Device ID required" }, { status: 400 });
+  const userId = await getUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const profile = await getProfile(deviceId);
+  const profile = await getProfile(userId);
   return NextResponse.json({ profile });
 }
 
 export async function POST(request: NextRequest) {
-  const deviceId = request.headers.get("x-device-id");
-  if (!deviceId) {
-    return NextResponse.json({ error: "Device ID required" }, { status: 400 });
+  const userId = await getUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json();
-  const profile = await upsertProfile(deviceId, body);
+  const profile = await upsertProfile(userId, body);
 
   if (!profile) {
     return NextResponse.json({ error: "Failed to save profile" }, { status: 500 });
