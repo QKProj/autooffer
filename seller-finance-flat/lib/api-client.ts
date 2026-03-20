@@ -3,6 +3,8 @@ import { AnalysisResult, UserProfile, AnalysisHistoryEntry, EstimateDefaults } f
 
 const headers = async () => {
   const { data } = await supabaseAuth.auth.getSession();
+  console.log("[DEBUG] Session:", data.session ? "exists" : "null");
+  console.log("[DEBUG] Token:", data.session?.access_token?.slice(0, 20) || "EMPTY");
   const token = data.session?.access_token || "";
   return {
     "Content-Type": "application/json",
