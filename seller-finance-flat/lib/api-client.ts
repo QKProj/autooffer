@@ -2,15 +2,26 @@ import { supabaseAuth } from "./auth";
 import { AnalysisResult, UserProfile, AnalysisHistoryEntry, EstimateDefaults } from "./types";
 
 const headers = async () => {
+  // Try getSession first
   const { data } = await supabaseAuth.auth.getSession();
-  console.log("[DEBUG] Session:", data.session ? "exists" : "null");
-  console.log("[DEBUG] Token:", data.session?.access_token?.slice(0, 20) || "EMPTY");
-  const token = data.session?.access_token || "";
+  let token = data.session?.access_token || "";
+
+  // Fallback: read from localStorage if getSession missed it
+  if (!token && typeof window !== "undefined") {
+    try {
+      const key = Object.keys(localStorage).find(k => k.startsWith("sb-") && k.endsWith("-auth-token"));
+      if (key) {
+        const stored = JSON.parse(localStorage.getItem(key) || "{}");
+        token = stored.access_token || "";
+      }
+    } catch {}
+  }
+
   return {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${token}`,
   };
-};
+}
 
 // ═══════════════════════════════════════════
 // SCRAPE & ANALYZE
